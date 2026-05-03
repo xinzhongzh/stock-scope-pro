@@ -74,7 +74,7 @@ def index():
                 gap: 10px;
             }
 
-            .search-box input {
+            .search-box input[type="text"] {
                 padding: 12px 20px;
                 font-size: 1.1em;
                 border: 2px solid #3d2b7e;
@@ -84,6 +84,24 @@ def index():
                 width: 250px;
                 outline: none;
                 transition: all 0.3s;
+            }
+
+            .search-box input[type="date"] {
+                padding: 12px 15px;
+                font-size: 0.95em;
+                border: 2px solid #3d2b7e;
+                border-radius: 30px;
+                background: #1a1a3e;
+                color: #fff;
+                width: 160px;
+                outline: none;
+                transition: all 0.3s;
+                color-scheme: dark;
+            }
+
+            .search-box input[type="date"]::-webkit-calendar-picker-indicator {
+                filter: invert(1);
+                cursor: pointer;
             }
 
             .search-box input:focus {
@@ -296,6 +314,16 @@ def index():
                     autocomplete="off"
                     autofocus
                 >
+                <input
+                    type="date"
+                    id="startDate"
+                    title="Start date for analysis"
+                >
+                <input
+                    type="date"
+                    id="endDate"
+                    title="End date for analysis"
+                >
                 <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()">
                     <span class="spinner"></span>
                     <span class="btn-text">Analyze</span>
@@ -362,6 +390,15 @@ def index():
                 }
             }
 
+            // Set default dates: start = 2 years ago, end = today
+            (function initDates() {
+                const today = new Date();
+                const twoYearsAgo = new Date(today);
+                twoYearsAgo.setFullYear(today.getFullYear() - 2);
+                document.getElementById('startDate').value = twoYearsAgo.toISOString().split('T')[0];
+                document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            })();
+
             async function runAnalysis() {
                 const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
                 if (!ticker) {
@@ -374,10 +411,16 @@ def index():
                 document.getElementById('resultsSection').classList.add('hidden');
 
                 try {
+                    const startDate = document.getElementById('startDate').value;
+                    const endDate = document.getElementById('endDate').value;
                     const response = await fetch('/analyze', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ticker: ticker })
+                        body: JSON.stringify({
+                            ticker: ticker,
+                            start_date: startDate || null,
+                            end_date: endDate || null
+                        })
                     });
 
                     const data = await response.json();
@@ -461,6 +504,10 @@ def analyze():
     if not ticker or not ticker.isascii() or len(ticker) > 10:
         return jsonify({'error': 'Invalid ticker symbol'}), 400
 
+    # Extract optional date range
+    start_date = data.get('start_date') or None
+    end_date = data.get('end_date') or None
+
     lock = get_lock(ticker)
 
     # Try to acquire lock without blocking; if busy, return immediately
@@ -478,18 +525,18 @@ def analyze():
         }
 
         # 1. Price Chart with Moving Averages
-        chart_result = fetch_stock.run_analysis(ticker, output_dir=OUTPUT_DIR)
+        chart_result = fetch_stock.run_analysis(ticker, output_dir=OUTPUT_DIR, start_date=start_date, end_date=end_date)
         result['chart_file'] = os.path.basename(chart_result['chart_file'])
 
         # 2. Technical Analysis Dashboard
-        tech_result = generate_html_analysis.run_analysis(ticker, output_dir=OUTPUT_DIR)
+        tech_result = generate_html_analysis.run_analysis(ticker, output_dir=OUTPUT_DIR, start_date=start_date, end_date=end_date)
         result['technical_file'] = os.path.basename(tech_result['dashboard_file'])
         result['recommendation'] = tech_result['recommendation']
         result['buy_signals'] = tech_result['buy_signals']
         result['sell_signals'] = tech_result['sell_signals']
 
         # 3. Support & Resistance Guide
-        support_result = create_support_resistance_guide.run_analysis(ticker, output_dir=OUTPUT_DIR)
+        support_result = create_support_resistance_guide.run_analysis(ticker, output_dir=OUTPUT_DIR, start_date=start_date, end_date=end_date)
         result['support_file'] = os.path.basename(support_result['guide_file'])
 
         return jsonify(result)

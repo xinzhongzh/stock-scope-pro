@@ -218,13 +218,21 @@ def create_support_resistance_guide():
     return fig
 
 
-def calculate_price_levels(ticker_symbol):
+def calculate_price_levels(ticker_symbol, start_date=None, end_date=None):
     """Fetch stock data and calculate support/resistance levels"""
     try:
         import yfinance as yf
+        from datetime import datetime as dt_mod
         
         ticker = yf.Ticker(ticker_symbol)
-        hist = ticker.history(period='1y')
+        if start_date is not None and end_date is not None:
+            hist = ticker.history(start=start_date, end=end_date)
+        elif start_date is not None:
+            hist = ticker.history(start=start_date, end=dt_mod.now())
+        elif end_date is not None:
+            hist = ticker.history(end=end_date)
+        else:
+            hist = ticker.history(period='1y')
         
         if hist.empty:
             # Fallback values if data can't be fetched
@@ -711,9 +719,22 @@ def create_summary_page(ticker_symbol, levels):
     return html_content
 
 
-def run_analysis(ticker_symbol, output_dir='.'):
+def run_analysis(ticker_symbol, output_dir='.', start_date=None, end_date=None):
     """Run analysis and return output file paths (for use as importable module)"""
     import os
+    from datetime import datetime
+    
+    # Convert string dates to datetime if provided
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            start_date = None
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            end_date = None
     
     print("📊 Creating Support & Resistance charts...")
     fig = create_support_resistance_guide()
@@ -727,7 +748,7 @@ def run_analysis(ticker_symbol, output_dir='.'):
     
     print("📄 Creating guide page...")
     # Calculate real price levels from stock data
-    levels = calculate_price_levels(ticker_symbol)
+    levels = calculate_price_levels(ticker_symbol, start_date=start_date, end_date=end_date)
     html_content = create_summary_page(ticker_symbol, levels)
     
     # Fix the iframe src to point to the ticker-specific chart file

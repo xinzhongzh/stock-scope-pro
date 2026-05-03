@@ -5,10 +5,18 @@ from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import numpy as np
 
-def fetch_stock_data(ticker_symbol, period='5y'):
+def fetch_stock_data(ticker_symbol, period='5y', start_date=None, end_date=None):
     """Fetch stock data for any ticker"""
+    from datetime import datetime as dt_mod
     ticker = yf.Ticker(ticker_symbol)
-    hist = ticker.history(period=period)
+    if start_date is not None and end_date is not None:
+        hist = ticker.history(start=start_date, end=end_date)
+    elif start_date is not None:
+        hist = ticker.history(start=start_date, end=dt_mod.now())
+    elif end_date is not None:
+        hist = ticker.history(end=end_date)
+    else:
+        hist = ticker.history(period=period)
     return hist
 
 def calculate_indicators(data):
@@ -284,12 +292,25 @@ def create_summary_html(signals, buy_signals, sell_signals, recommendation, colo
     
     return summary_html
 
-def run_analysis(ticker_symbol, output_dir='.'):
+def run_analysis(ticker_symbol, output_dir='.', start_date=None, end_date=None):
     """Run analysis and return output file paths (for use as importable module)"""
     import os
+    from datetime import datetime
+    
+    # Convert string dates to datetime if provided
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            start_date = None
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            end_date = None
     
     print(f"📊 Fetching {ticker_symbol} data...")
-    data = fetch_stock_data(ticker_symbol, period='5y')
+    data = fetch_stock_data(ticker_symbol, start_date=start_date, end_date=end_date)
     
     print("📈 Calculating technical indicators...")
     data = calculate_indicators(data)
