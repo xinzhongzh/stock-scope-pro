@@ -507,11 +507,13 @@ def serve_file(filename):
 
 
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
     print("\n" + "=" * 60)
     print("  📊 StockScope Pro - Stock Analysis Dashboard")
     print("=" * 60)
-    print(f"\n  🌐 Server starting at: http://127.0.0.1:5000")
+    host_display = '0.0.0.0' if os.environ.get('RENDER') else '127.0.0.1'
+    print(f"\n  🌐 Server starting on port {port}")
     print(f"  📁 Output directory: {OUTPUT_DIR}")
     print(f"\n  Open your browser and enter any stock ticker!")
     print("=" * 60 + "\n")
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=not os.environ.get('RENDER'), host='0.0.0.0', port=port)
