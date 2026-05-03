@@ -121,8 +121,11 @@ def generate_recommendation(signals):
 def create_dashboard(data, signals, recommendation, color, ticker_symbol):
     """Create interactive dashboard with subplots"""
     
-    # Get recent data for better visibility
-    recent_data = data.tail(252)  # Last 1 year
+    # Use all fetched data for the visualization
+    recent_data = data
+    # Limit to at most 5 years (1258 trading days) for chart readability
+    if len(recent_data) > 1258:
+        recent_data = recent_data.tail(1258)
     
     # Create subplots
     fig = make_subplots(
